@@ -1,7 +1,7 @@
 import { ipcMain, ipcRenderer } from "electron";
 
 export class Renderer {
-    public static send(channel: string, args: any): void {
+    public static send(channel: string, args?: any): void {
         ipcRenderer.send(channel, args);
     }
 
@@ -13,22 +13,27 @@ export class Renderer {
         });
     }
 
-    public static request<TReturn>(channel: string, args: any): Promise<TReturn> {
+    public static request<TReturn>(channel: string, args?: any): Promise<TReturn> {
         this.send(channel, args);
         return this.get<TReturn>(channel);
     }
 
-    public static on<TReturn>(channel: string, handle: (data: TReturn) => void): void {
-        ipcRenderer.on(channel, (event, data: TReturn) => handle(data));
+    public static on<TReturn>(channel: string, handle: (data: TReturn) => Promise<any>): void {
+        ipcRenderer.on(channel, async (event, data: TReturn) => {
+            const result = await handle(data);
+            this.send(channel, result);
+        });
     }
 }
 
 export class Main {
-    public static send(content: Electron.WebContents, channel: string, args: any): void {
-        content.send(channel, args);
+    public constructor(private content: Electron.WebContents) {}
+
+    public send(channel: string, args?: any): void {
+        this.content.send(channel, args);
     }
 
-    public static get<TReturn>(channel: string): Promise<TReturn> {
+    public get<TReturn>(channel: string): Promise<TReturn> {
         return new Promise<TReturn>((resolve) => {
             ipcMain.once(channel, (event, data: TReturn) => {
                 resolve(data);
@@ -36,12 +41,15 @@ export class Main {
         });
     }
 
-    public static request<TReturn>(content: Electron.WebContents, channel: string, args: any): Promise<TReturn> {
-        this.send(content, channel, args);
+    public request<TReturn>(channel: string, args?: any): Promise<TReturn> {
+        this.send(channel, args);
         return this.get<TReturn>(channel);
     }
 
-    public static on<TReturn>(channel: string, handle: (data: TReturn) => void): void {
-        ipcMain.on(channel, (event, data: TReturn) => handle(data));
+    public on<TReturn>(channel: string, handle: (data: TReturn) => Promise<any>): void {
+        ipcMain.on(channel, async (event, data: TReturn) => {
+            const result = await handle(data);
+            this.send(channel, result);
+        });
     }
 }
