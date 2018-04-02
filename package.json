@@ -1,5 +1,5 @@
 {
-    "name": "dev-json-log-tracker",
+    "name": "typescript-react-electron-boilerplate",
     "version": "0.1.0",
     "main": "dist/main.js",
     "devDependencies": {
